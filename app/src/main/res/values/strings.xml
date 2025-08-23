@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">AInewsMakerFetcher</string>
+    <string name="refresh">Refresh</string>
+    <string name="from_date">From</string>
+    <string name="to_date">To</string>
+    <string name="clear_filter">Clear</string>
 </resources>
