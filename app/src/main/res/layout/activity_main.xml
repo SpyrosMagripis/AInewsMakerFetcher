@@ -15,28 +15,27 @@
             android:id="@+id/btnFromDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/from_date"/>
+            android:backgroundTint="@color/navy_blue"
+            android:text="@string/from_date"
+            android:textColor="@android:color/white"/>
 
         <Button
             android:id="@+id/btnToDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="@string/to_date"/>
+            android:backgroundTint="@color/navy_blue"
+            android:text="@string/to_date"
+            android:textColor="@android:color/white"/>
 
         <Button
             android:id="@+id/btnClearFilter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="@string/clear_filter"/>
-
-        <Button
-            android:id="@+id/btnRefresh"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/refresh"/>
+            android:backgroundTint="@color/navy_blue"
+            android:text="@string/clear_filter"
+            android:textColor="@android:color/white"/>
     </LinearLayout>
 
     <ListView
