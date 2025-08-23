@@ -1,7 +1,10 @@
 package com.spymag.ainewsmakerfetcher
 
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.Button
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
@@ -28,8 +31,14 @@ class MainActivity : AppCompatActivity() {
         listView = findViewById(R.id.listReports)
         adapter = ReportAdapter(this, mutableListOf())
         listView.adapter = adapter
-
-        findViewById<Button>(R.id.btnRefresh).setOnClickListener { fetchReports() }
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val report = adapter.getItem(position)
+            if (report != null) {
+                val intent = Intent(this, ReportActivity::class.java)
+                intent.putExtra("url", report.url)
+                startActivity(intent)
+            }
+        }
         findViewById<Button>(R.id.btnClearFilter).setOnClickListener {
             fromDate = null
             toDate = null
@@ -45,6 +54,21 @@ class MainActivity : AppCompatActivity() {
         } }
 
         fetchReports()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_refresh -> {
+                fetchReports()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun fetchReports() {
