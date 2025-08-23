@@ -2,7 +2,11 @@ package com.spymag.ainewsmakerfetcher
 
 import android.os.Bundle
 import android.widget.TextView
+import android.text.method.LinkMovementMethod
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.text.HtmlCompat
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.HtmlRenderer
 import java.net.URL
 import kotlin.concurrent.thread
 
@@ -17,7 +21,14 @@ class ReportActivity : AppCompatActivity() {
             thread {
                 try {
                     val content = URL(url).readText()
-                    runOnUiThread { textView.text = content }
+                    val parser = Parser.builder().build()
+                    val document = parser.parse(content)
+                    val renderer = HtmlRenderer.builder().build()
+                    val html = renderer.render(document)
+                    runOnUiThread {
+                        textView.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                        textView.movementMethod = LinkMovementMethod.getInstance()
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     runOnUiThread { textView.text = "Failed to load report." }
