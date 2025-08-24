@@ -4,4 +4,6 @@
     <string name="from_date">From</string>
     <string name="to_date">To</string>
     <string name="clear_filter">Clear</string>
+    <string name="local_news">Local News</string>
+    <string name="select_folder">Select OneDrive Folder</string>
 </resources>

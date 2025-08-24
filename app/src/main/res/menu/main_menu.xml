@@ -6,4 +6,8 @@
         android:title="@string/refresh"
         android:icon="@drawable/ic_refresh"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/action_local"
+        android:title="@string/local_news"
+        app:showAsAction="never" />
 </menu>

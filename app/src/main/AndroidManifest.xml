@@ -21,6 +21,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".ReportActivity" />
-    </application>
+        <activity android:name=".LocalNewsActivity" />
+        <activity android:name=".LocalReportActivity" />
+      </application>
 
 </manifest>

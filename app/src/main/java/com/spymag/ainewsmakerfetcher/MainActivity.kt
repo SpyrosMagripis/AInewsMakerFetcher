@@ -98,6 +98,10 @@ class MainActivity : AppCompatActivity() {
                 fetchReports()
                 true
             }
+            R.id.action_local -> {
+                startActivity(Intent(this, LocalNewsActivity::class.java))
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
