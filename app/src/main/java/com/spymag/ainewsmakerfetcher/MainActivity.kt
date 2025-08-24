@@ -2,12 +2,18 @@ package com.spymag.ainewsmakerfetcher
 
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Button
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -26,7 +32,32 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.show(WindowInsetsCompat.Type.systemBars())
+        val isLightMode =
+            (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
+                Configuration.UI_MODE_NIGHT_YES
+        controller.isAppearanceLightStatusBars = isLightMode
+
+        val root: View = findViewById(R.id.rootLayout)
+        val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.actionBarSize))
+        val actionBarHeight = typedArray.getDimensionPixelSize(0, 0)
+        typedArray.recycle()
+        val start = root.paddingLeft
+        val end = root.paddingRight
+        val bottom = root.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(
+                start + systemBars.left,
+                systemBars.top + actionBarHeight,
+                end + systemBars.right,
+                bottom + systemBars.bottom
+            )
+            WindowInsetsCompat.CONSUMED
+        }
 
         listView = findViewById(R.id.listReports)
         adapter = ReportAdapter(this, mutableListOf())
