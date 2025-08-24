@@ -8,6 +8,9 @@ import android.view.MenuItem
 import android.widget.Button
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -26,7 +29,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         setContentView(R.layout.activity_main)
+        WindowInsetsControllerCompat(window, window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
 
         listView = findViewById(R.id.listReports)
         adapter = ReportAdapter(this, mutableListOf())

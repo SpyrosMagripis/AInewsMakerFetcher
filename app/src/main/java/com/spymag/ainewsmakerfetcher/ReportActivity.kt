@@ -4,6 +4,9 @@ import android.os.Bundle
 import android.widget.TextView
 import android.text.method.LinkMovementMethod
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.text.HtmlCompat
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
@@ -13,7 +16,10 @@ import kotlin.concurrent.thread
 class ReportActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
         setContentView(R.layout.activity_report)
+        WindowInsetsControllerCompat(window, window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
 
         val url = intent.getStringExtra("url")
         val textView: TextView = findViewById(R.id.tvContent)
