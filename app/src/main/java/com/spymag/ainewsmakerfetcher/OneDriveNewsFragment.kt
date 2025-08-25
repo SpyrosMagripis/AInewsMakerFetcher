@@ -3,6 +3,7 @@ package com.spymag.ainewsmakerfetcher
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -79,19 +80,36 @@ class OneDriveNewsFragment : Fragment() {
     private fun openFolderPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
             // Core permissions needed for folder operations
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or 
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                     Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-            
+
             // These extras help ensure cloud storage providers like OneDrive are visible
             putExtra("android.content.extra.SHOW_ADVANCED", true)
             putExtra("android.intent.extra.LOCAL_ONLY", false)
-            
+
             // Add default category to include more providers
             addCategory(Intent.CATEGORY_DEFAULT)
+
+            // If OneDrive is installed, target its picker for browsing
+            if (isOneDriveInstalled()) {
+                setPackage("com.microsoft.skydrive")
+            }
         }
-        
+
         folderPickerLauncher.launch(intent)
+    }
+
+    /**
+     * Checks if the OneDrive application is installed on the device.
+     */
+    private fun isOneDriveInstalled(): Boolean {
+        return try {
+            requireContext().packageManager.getPackageInfo("com.microsoft.skydrive", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
     }
     
     /**
