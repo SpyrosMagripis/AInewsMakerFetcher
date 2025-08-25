@@ -42,6 +42,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.commonmark)
     implementation(libs.androidx.documentfile)
+    implementation(libs.androidx.viewpager2)
+    implementation(libs.androidx.fragment)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
