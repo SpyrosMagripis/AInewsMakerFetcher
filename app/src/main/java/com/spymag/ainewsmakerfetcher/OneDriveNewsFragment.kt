@@ -78,16 +78,38 @@ class OneDriveNewsFragment : Fragment() {
     
     private fun openFolderPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            // Add flags to ensure all document providers are shown including OneDrive
+            // Core permissions needed for folder operations
             flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or 
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                     Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
             
-            // Add category to ensure all openable providers are shown
-            addCategory(Intent.CATEGORY_OPENABLE)
-            
-            // Add extra to show all available providers including cloud storage
+            // These extras help ensure cloud storage providers like OneDrive are visible
             putExtra("android.content.extra.SHOW_ADVANCED", true)
+            putExtra("android.intent.extra.LOCAL_ONLY", false)
+            
+            // Add default category to include more providers
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        
+        folderPickerLauncher.launch(intent)
+    }
+    
+    /**
+     * Alternative folder picker method with explicit OneDrive targeting.
+     * This can be used if the standard approach doesn't show OneDrive.
+     */
+    private fun openFolderPickerWithExplicitProviders() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or 
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            
+            // Add category that helps expose more providers
+            addCategory(Intent.CATEGORY_DEFAULT)
+            
+            // Extras that can help show cloud storage providers
+            putExtra("android.content.extra.SHOW_ADVANCED", true)
+            putExtra("android.intent.extra.LOCAL_ONLY", false)
         }
         folderPickerLauncher.launch(intent)
     }
