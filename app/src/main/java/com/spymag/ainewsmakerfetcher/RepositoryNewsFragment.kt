@@ -99,11 +99,10 @@ class RepositoryNewsFragment : Fragment() {
         for (i in 0 until arr.length()) {
             val obj = arr.getJSONObject(i)
             val name = obj.getString("name")
-            val match = dateRegex.find(name)
-            if (match != null) {
-                val dateStr = match.groupValues[1]
-                val date = LocalDate.parse(dateStr)
+            if (name.endsWith(".md")) {
                 val url = obj.getString("download_url")
+                val match = dateRegex.find(name)
+                val date = match?.let { LocalDate.parse(it.value) } ?: LocalDate.MIN
                 list.add(Report(name, date, url))
             }
         }
@@ -112,8 +111,9 @@ class RepositoryNewsFragment : Fragment() {
     
     private fun applyFilter() {
         val filtered = allReports.filter { report ->
-            (fromDate == null || !report.date.isBefore(fromDate)) &&
-            (toDate == null || !report.date.isAfter(toDate))
+            val afterFrom = fromDate?.let { !report.date.isBefore(it) } ?: true
+            val beforeTo = toDate?.let { !report.date.isAfter(it) } ?: true
+            afterFrom && beforeTo
         }
         adapter.update(filtered)
     }

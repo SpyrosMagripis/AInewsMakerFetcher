@@ -99,7 +99,7 @@ class OneDriveNewsFragment : Fragment() {
     }
     
     private fun showDefaultPathSuggestion() {
-        tvSelectedPath.text = "Suggested path: $DEFAULT_PATH"
+        tvSelectedPath.text = "Suggested default: $DEFAULT_PATH\nTap 'Select OneDrive Folder' to browse"
         adapter.update(emptyList())
     }
     
