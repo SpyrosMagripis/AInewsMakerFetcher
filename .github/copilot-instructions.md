@@ -115,9 +115,15 @@ After making code changes, ALWAYS perform these validation steps:
 
 ### Layout Files
 - `app/src/main/res/layout/activity_main.xml` - Main list layout with filter buttons
-- `app/src/main/res/layout/activity_report.xml` - Report detail layout
-- `app/src/main/res/layout/item_report.xml` - List item layout for reports
+- `app/src/main/res/layout/activity_report.xml` - Report detail layout (ScrollView with TextView)
+- `app/src/main/res/layout/item_report.xml` - List item layout (title + date in LinearLayout)
 - `app/src/main/res/menu/main_menu.xml` - Menu with refresh action
+
+### UI Component Structure
+- **MainActivity**: LinearLayout with date filter buttons + ListView
+- **ReportActivity**: ScrollView containing single TextView for markdown content
+- **List Items**: Simple LinearLayout with bold title and date text
+- **Filter Buttons**: Three buttons (From Date, To Date, Clear Filter) with navy blue background
 
 ### Test Files
 - `app/src/test/java/com/spymag/ainewsmakerfetcher/ExampleUnitTest.kt` - Unit tests
@@ -196,3 +202,24 @@ AInewsMakerFetcher/
 - Cannot run app functionality tests without internet connectivity
 - Emulator required for full validation - cannot test on headless systems
 - Some CI environments may block external API calls
+
+## Additional Developer Guidelines
+
+### Working with This Codebase
+- **Threading Pattern**: Network calls are made in background threads using `kotlin.concurrent.thread`
+- **UI Updates**: Always use `runOnUiThread` when updating UI from background threads
+- **Error Handling**: Network errors are caught but may fail silently - consider improving error reporting
+- **Date Handling**: Dates extracted from filenames using regex `(\d{4}-\d{2}-\d{2})` pattern
+- **API Response**: GitHub API returns JSON array of file objects with `name` and `download_url` fields
+
+### Common Modification Patterns
+- **Adding new UI elements**: Modify layout files in `app/src/main/res/layout/`
+- **Changing data models**: Update `Report.kt` and corresponding adapter logic
+- **Network modifications**: Update `fetchReports()` method in `MainActivity.kt`
+- **UI theme changes**: Modify `app/src/main/res/values/` resource files
+
+### Performance Considerations
+- Network calls block threads - consider using coroutines for better async handling
+- List adapter updates happen on main thread - efficient for small datasets
+- Markdown rendering may be expensive for large documents
+- Date parsing regex runs on every filename - could be optimized
