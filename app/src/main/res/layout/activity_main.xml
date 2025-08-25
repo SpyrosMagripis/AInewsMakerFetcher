@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,43 +9,19 @@
     android:paddingEnd="16dp"
     android:paddingBottom="16dp">
 
-    <LinearLayout
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="8dp"
+        app:tabTextColor="@color/navy_blue"
+        app:tabSelectedTextColor="@color/navy_blue"
+        app:tabIndicatorColor="@color/navy_blue" />
 
-        <Button
-            android:id="@+id/btnFromDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@color/navy_blue"
-            android:text="@string/from_date"
-            android:textColor="@android:color/white"/>
-
-        <Button
-            android:id="@+id/btnToDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:backgroundTint="@color/navy_blue"
-            android:text="@string/to_date"
-            android:textColor="@android:color/white"/>
-
-        <Button
-            android:id="@+id/btnClearFilter"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:backgroundTint="@color/navy_blue"
-            android:text="@string/clear_filter"
-            android:textColor="@android:color/white"/>
-    </LinearLayout>
-
-    <ListView
-        android:id="@+id/listReports"
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1" />
 
 </LinearLayout>
