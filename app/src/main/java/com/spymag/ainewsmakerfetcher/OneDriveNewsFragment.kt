@@ -77,7 +77,18 @@ class OneDriveNewsFragment : Fragment() {
     }
     
     private fun openFolderPicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            // Add flags to ensure all document providers are shown including OneDrive
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or 
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            
+            // Add category to ensure all openable providers are shown
+            addCategory(Intent.CATEGORY_OPENABLE)
+            
+            // Add extra to show all available providers including cloud storage
+            putExtra("android.content.extra.SHOW_ADVANCED", true)
+        }
         folderPickerLauncher.launch(intent)
     }
     
