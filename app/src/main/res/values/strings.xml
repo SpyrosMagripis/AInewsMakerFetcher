@@ -5,8 +5,8 @@
     <string name="to_date">To</string>
     <string name="clear_filter">Clear</string>
     <string name="local_news">Local News</string>
-    <string name="select_folder">Select OneDrive Folder</string>
+    <string name="select_folder">Select Daily Actions Folder</string>
     <string name="repository_news">Repository News</string>
-    <string name="onedrive_news">OneDrive News</string>
-    <string name="no_folder_selected">No OneDrive folder selected</string>
+    <string name="onedrive_news">Daily Actions</string>
+    <string name="no_folder_selected">No Daily Actions folder selected</string>
 </resources>

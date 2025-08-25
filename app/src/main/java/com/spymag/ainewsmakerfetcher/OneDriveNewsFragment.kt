@@ -23,8 +23,8 @@ class OneDriveNewsFragment : Fragment() {
     private lateinit var btnPickFolder: Button
     
     companion object {
-        private const val DEFAULT_PATH = "personal/spyros_magripis_nov_com/Documents/ActionsForToday"
-        private const val PREFS_NAME = "onedrive_settings"
+        private const val DEFAULT_PATH = "personal/spyros_magripis_nov_com/Documents/DailyActions"
+        private const val PREFS_NAME = "daily_actions_settings"
         private const val KEY_TREE_URI = "treeUri"
     }
     
@@ -33,9 +33,10 @@ class OneDriveNewsFragment : Fragment() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.data ?: return@registerForActivityResult
+            // Enhanced SAF usage: Take both read and write permissions for daily actions
             requireContext().contentResolver.takePersistableUriPermission(
                 uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
             saveSelectedPath(uri)
             loadArticles(uri)
@@ -99,7 +100,7 @@ class OneDriveNewsFragment : Fragment() {
     }
     
     private fun showDefaultPathSuggestion() {
-        tvSelectedPath.text = "Suggested default: $DEFAULT_PATH\nTap 'Select OneDrive Folder' to browse"
+        tvSelectedPath.text = "Suggested default: $DEFAULT_PATH\nTap 'Select Daily Actions Folder' to browse"
         adapter.update(emptyList())
     }
     
@@ -131,6 +132,38 @@ class OneDriveNewsFragment : Fragment() {
         } catch (e: Exception) {
             e.printStackTrace()
             adapter.update(emptyList())
+        }
+    }
+    
+    /**
+     * Enhanced SAF usage method for Daily Actions functionality.
+     * Creates a new daily action file in the selected OneDrive folder.
+     */
+    private fun createDailyActionFile(content: String): Boolean {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val uriString = prefs.getString(KEY_TREE_URI, null) ?: return false
+        
+        return try {
+            val treeUri = Uri.parse(uriString)
+            val root = DocumentFile.fromTreeUri(requireContext(), treeUri) ?: return false
+            
+            // Create a new file with timestamp for daily actions
+            val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm", java.util.Locale.getDefault())
+                .format(java.util.Date())
+            val fileName = "daily_action_$timestamp.txt"
+            
+            val newFile = root.createFile("text/plain", fileName) ?: return false
+            
+            requireContext().contentResolver.openOutputStream(newFile.uri)?.use { outputStream ->
+                outputStream.write(content.toByteArray())
+            }
+            
+            // Refresh the list to show the new file
+            loadArticles(treeUri)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 }
