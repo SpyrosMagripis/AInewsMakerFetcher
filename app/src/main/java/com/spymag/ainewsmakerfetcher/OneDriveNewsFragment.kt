@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -91,9 +92,11 @@ class OneDriveNewsFragment : Fragment() {
             // Add default category to include more providers
             addCategory(Intent.CATEGORY_DEFAULT)
 
-            // If OneDrive is installed, target its picker for browsing
+            // If OneDrive is installed, start in its provider
             if (isOneDriveInstalled()) {
-                setPackage("com.microsoft.skydrive")
+                getOneDriveRootUri()?.let {
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, it)
+                }
             }
         }
 
@@ -110,6 +113,24 @@ class OneDriveNewsFragment : Fragment() {
         } catch (e: PackageManager.NameNotFoundException) {
             false
         }
+    }
+
+    /**
+     * Attempts to obtain the root URI for the OneDrive document provider.
+     */
+    private fun getOneDriveRootUri(): Uri? {
+        val authority = "com.microsoft.skydrive.content.StorageProvider"
+        val rootsUri = DocumentsContract.buildRootsUri(authority)
+        val projection = arrayOf(DocumentsContract.Root.COLUMN_DOCUMENT_ID)
+        val cursor = requireContext().contentResolver.query(rootsUri, projection, null, null, null)
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val docId = it.getString(0)
+                return DocumentsContract.buildDocumentUri(authority, docId)
+            }
+        }
+        return null
     }
     
     /**
@@ -172,7 +193,7 @@ class OneDriveNewsFragment : Fragment() {
             val items = mutableListOf<LocalArticle>()
             
             for (file in root.listFiles()) {
-                if (file.isFile && file.name?.endsWith(".txt", true) == true) {
+                if (file.isFile && file.name?.let { it.endsWith(".txt", true) || it.endsWith(".md", true) } == true) {
                     val text = requireContext().contentResolver.openInputStream(file.uri)?.bufferedReader()
                         ?.use { it.readText() }.orEmpty()
                     val preview = text.lineSequence().firstOrNull() ?: ""
