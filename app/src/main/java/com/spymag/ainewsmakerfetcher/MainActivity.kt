@@ -2,18 +2,22 @@ package com.spymag.ainewsmakerfetcher
 
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.net.Uri
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Button
+import android.widget.TextView
 import android.widget.ListView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.google.android.material.tabs.TabLayout
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -25,6 +29,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var listView: ListView
     private lateinit var adapter: ReportAdapter
+    private lateinit var layoutNews: View
+    private lateinit var layoutDaily: View
+    private lateinit var folderText: TextView
+
+    private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null) {
+            folderText.text = uri.toString()
+        }
+    }
 
     private val allReports = mutableListOf<Report>()
     private var fromDate: LocalDate? = null
@@ -42,6 +55,26 @@ class MainActivity : AppCompatActivity() {
         controller.isAppearanceLightStatusBars = isLightMode
 
         val root: View = findViewById(R.id.rootLayout)
+        val tabLayout: TabLayout = findViewById(R.id.tabLayout)
+        layoutNews = findViewById(R.id.layoutNews)
+        layoutDaily = findViewById(R.id.layoutDaily)
+        folderText = findViewById(R.id.tvFolder)
+
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                if (tab?.position == 0) {
+                    layoutNews.visibility = View.VISIBLE
+                    layoutDaily.visibility = View.GONE
+                } else {
+                    layoutNews.visibility = View.GONE
+                    layoutDaily.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
         val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.actionBarSize))
         val actionBarHeight = typedArray.getDimensionPixelSize(0, 0)
         typedArray.recycle()
@@ -83,6 +116,10 @@ class MainActivity : AppCompatActivity() {
             toDate = date
             applyFilter()
         } }
+
+        findViewById<Button>(R.id.btnSelectFolder).setOnClickListener {
+            folderPicker.launch(null)
+        }
 
         fetchReports()
     }

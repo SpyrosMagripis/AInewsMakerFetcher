@@ -4,4 +4,8 @@
     <string name="from_date">From</string>
     <string name="to_date">To</string>
     <string name="clear_filter">Clear</string>
+    <string name="news_tab">News</string>
+    <string name="daily_actions_tab">Daily actions</string>
+    <string name="select_folder">Select Folder</string>
+    <string name="no_folder_selected">No folder selected</string>
 </resources>

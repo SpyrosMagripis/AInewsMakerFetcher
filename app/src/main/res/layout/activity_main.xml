@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,43 +9,85 @@
     android:paddingEnd="16dp"
     android:paddingBottom="16dp">
 
-    <LinearLayout
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:layout_height="wrap_content">
+        <com.google.android.material.tabs.TabItem
+            android:text="@string/news_tab"/>
+        <com.google.android.material.tabs.TabItem
+            android:text="@string/daily_actions_tab"/>
+    </com.google.android.material.tabs.TabLayout>
 
-        <Button
-            android:id="@+id/btnFromDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@color/navy_blue"
-            android:text="@string/from_date"
-            android:textColor="@android:color/white"/>
-
-        <Button
-            android:id="@+id/btnToDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:backgroundTint="@color/navy_blue"
-            android:text="@string/to_date"
-            android:textColor="@android:color/white"/>
-
-        <Button
-            android:id="@+id/btnClearFilter"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:backgroundTint="@color/navy_blue"
-            android:text="@string/clear_filter"
-            android:textColor="@android:color/white"/>
-    </LinearLayout>
-
-    <ListView
-        android:id="@+id/listReports"
+    <LinearLayout
+        android:id="@+id/layoutNews"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btnFromDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/navy_blue"
+                android:text="@string/from_date"
+                android:textColor="@android:color/white"/>
+
+            <Button
+                android:id="@+id/btnToDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="@color/navy_blue"
+                android:text="@string/to_date"
+                android:textColor="@android:color/white"/>
+
+            <Button
+                android:id="@+id/btnClearFilter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="@color/navy_blue"
+                android:text="@string/clear_filter"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <ListView
+            android:id="@+id/listReports"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutDaily"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/btnSelectFolder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/navy_blue"
+            android:text="@string/select_folder"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/tvFolder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/no_folder_selected"/>
+    </LinearLayout>
 
 </LinearLayout>
