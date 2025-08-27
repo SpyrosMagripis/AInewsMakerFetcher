@@ -1,16 +1,19 @@
 package com.spymag.ainewsmakerfetcher
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ListView
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
+import java.util.Calendar
 import kotlin.concurrent.thread
 
 class ActionsFragment : Fragment() {
@@ -19,6 +22,8 @@ class ActionsFragment : Fragment() {
     private lateinit var adapter: ReportAdapter
 
     private val allActions = mutableListOf<Report>()
+    private var fromDate: LocalDate? = null
+    private var toDate: LocalDate? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,6 +48,20 @@ class ActionsFragment : Fragment() {
             }
         }
 
+        view.findViewById<Button>(R.id.btnClearFilter).setOnClickListener {
+            fromDate = null
+            toDate = null
+            applyFilter()
+        }
+        view.findViewById<Button>(R.id.btnFromDate).setOnClickListener { pickDate { date ->
+            fromDate = date
+            applyFilter()
+        } }
+        view.findViewById<Button>(R.id.btnToDate).setOnClickListener { pickDate { date ->
+            toDate = date
+            applyFilter()
+        } }
+
         fetchActions()
     }
 
@@ -60,7 +79,7 @@ class ActionsFragment : Fragment() {
                 val fetched = parseActions(json)
                 allActions.clear()
                 allActions.addAll(fetched)
-                activity?.runOnUiThread { adapter.update(allActions) }
+                activity?.runOnUiThread { applyFilter() }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -82,5 +101,21 @@ class ActionsFragment : Fragment() {
             }
         }
         return list.sortedByDescending { it.date }
+    }
+
+    private fun applyFilter() {
+        val filtered = allActions.filter { action ->
+            val afterFrom = fromDate?.let { !action.date.isBefore(it) } ?: true
+            val beforeTo = toDate?.let { !action.date.isAfter(it) } ?: true
+            afterFrom && beforeTo
+        }
+        adapter.update(filtered)
+    }
+
+    private fun pickDate(onDate: (LocalDate) -> Unit) {
+        val now = Calendar.getInstance()
+        DatePickerDialog(requireContext(), { _, year, month, day ->
+            onDate(LocalDate.of(year, month + 1, day))
+        }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show()
     }
 }
