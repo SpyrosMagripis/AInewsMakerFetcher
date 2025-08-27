@@ -13,6 +13,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.text.HtmlCompat
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
+import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
 
@@ -51,7 +52,16 @@ class ReportActivity : AppCompatActivity() {
         if (url != null) {
             thread {
                 try {
-                    val content = URL(url).readText()
+                    val connection = URL(url).openConnection() as HttpURLConnection
+                    
+                    // Add GitHub authentication if PAT is available
+                    val githubPat = BuildConfig.GITHUB_PAT
+                    if (githubPat.isNotEmpty()) {
+                        connection.setRequestProperty("Authorization", "Bearer $githubPat")
+                    }
+                    
+                    connection.connect()
+                    val content = connection.inputStream.bufferedReader().use { it.readText() }
                     val parser = Parser.builder().build()
                     val document = parser.parse(content)
                     val renderer = HtmlRenderer.builder().build()

@@ -76,6 +76,13 @@ class ActionsFragment : Fragment() {
             try {
                 val url = URL("https://api.github.com/repos/SpyrosMagripis/FilesServer/contents/ActionsForToday")
                 val conn = url.openConnection() as HttpURLConnection
+                
+                // Add GitHub authentication if PAT is available
+                val githubPat = BuildConfig.GITHUB_PAT
+                if (githubPat.isNotEmpty()) {
+                    conn.setRequestProperty("Authorization", "Bearer $githubPat")
+                }
+                
                 conn.connect()
                 val json = conn.inputStream.bufferedReader().use { it.readText() }
                 val fetched = parseActions(json)
@@ -87,7 +94,7 @@ class ActionsFragment : Fragment() {
                 activity?.runOnUiThread {
                     Toast.makeText(
                         requireContext(),
-                        "Cannot access 'SpyrosMagripis/FilesServer'. If it's a private repository, authentication is required. Consider making it public or adding GitHub authentication to the app.",
+                        "Cannot access 'SpyrosMagripis/FilesServer'. If it's a private repository, make sure the GitHub PAT is correctly set in local.properties.",
                         Toast.LENGTH_LONG
                     ).show()
                 }
