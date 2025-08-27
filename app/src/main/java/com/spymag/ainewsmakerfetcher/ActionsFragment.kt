@@ -83,11 +83,11 @@ class ActionsFragment : Fragment() {
                 allActions.addAll(fetched)
                 activity?.runOnUiThread { applyFilter() }
             } catch (e: FileNotFoundException) {
-                // Repository or folder doesn't exist - provide user feedback
+                // Repository not found or private repository without authentication
                 activity?.runOnUiThread {
                     Toast.makeText(
                         requireContext(),
-                        "Repository 'SpyrosMagripis/FilesServer' not found. Please create the repository with an 'ActionsForToday' folder containing markdown files.",
+                        "Cannot access 'SpyrosMagripis/FilesServer'. If it's a private repository, authentication is required. Consider making it public or adding GitHub authentication to the app.",
                         Toast.LENGTH_LONG
                     ).show()
                 }
