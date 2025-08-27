@@ -8,8 +8,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ListView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
+import java.io.FileNotFoundException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
@@ -80,7 +82,25 @@ class ActionsFragment : Fragment() {
                 allActions.clear()
                 allActions.addAll(fetched)
                 activity?.runOnUiThread { applyFilter() }
+            } catch (e: FileNotFoundException) {
+                // Repository or folder doesn't exist - provide user feedback
+                activity?.runOnUiThread {
+                    Toast.makeText(
+                        requireContext(),
+                        "Repository 'SpyrosMagripis/FilesServer' not found. Please create the repository with an 'ActionsForToday' folder containing markdown files.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                e.printStackTrace()
             } catch (e: Exception) {
+                // Handle other errors
+                activity?.runOnUiThread {
+                    Toast.makeText(
+                        requireContext(),
+                        "Error fetching actions: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
                 e.printStackTrace()
             }
         }
