@@ -24,7 +24,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
+        val openAiKey = localProperties.getProperty("OPENAI_API_KEY", "")
+        buildConfigField("String", "OPENAI_API_KEY", "\"$openAiKey\"")
+
         // Add the GitHub PAT as a BuildConfig field
         buildConfigField("String", "GITHUB_PAT", "\"${localProperties.getProperty("repoPat", "")}\"")
     }
