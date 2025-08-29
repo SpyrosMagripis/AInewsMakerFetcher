@@ -15,4 +15,6 @@
     <string name="summary_failed">Failed to generate summary.</string>
     <string name="summary_no_key">OpenAI key not configured.</string>
     <string name="summary_none">No reports from last 3 days.</string>
+    <string name="tab_reports">AI News</string>
+    <string name="tab_actions">Actions for today</string>
 </resources>
