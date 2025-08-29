@@ -119,14 +119,12 @@ class ReportsFragment : Fragment() {
     private fun parseReports(json: String): List<Report> {
         val arr = JSONArray(json)
         val list = mutableListOf<Report>()
-        val dateRegex = Regex("(\\d{4}-\\d{2}-\\d{2})")
         for (i in 0 until arr.length()) {
             val obj = arr.getJSONObject(i)
             val name = obj.getString("name")
             if (name.endsWith(".md")) {
                 val url = obj.getString("download_url")
-                val match = dateRegex.find(name)
-                val date = match?.let { LocalDate.parse(it.value) } ?: LocalDate.MIN
+                val date = parseDateFromFileName(name) ?: LocalDate.MIN
                 list.add(Report(name, date, url))
             }
         }
