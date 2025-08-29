@@ -1,0 +1,9 @@
+# Local Properties Example
+# Copy this file to local.properties and fill in your actual API keys
+
+# OpenAI API Key (if needed)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# GitHub Personal Access Token (PAT) for accessing private repositories
+# This is required for accessing the SpyrosMagripis/FilesServer repository
+GITHUB_PAT=your_github_personal_access_token_here

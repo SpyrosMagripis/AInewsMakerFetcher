@@ -26,6 +26,9 @@ android {
 
         val openAiKey = localProps.getProperty("OPENAI_API_KEY", "")
         buildConfigField("String", "OPENAI_API_KEY", "\"$openAiKey\"")
+        
+        val githubPat = localProps.getProperty("GITHUB_PAT", "")
+        buildConfigField("String", "GITHUB_PAT", "\"$githubPat\"")
     }
 
     buildTypes {
