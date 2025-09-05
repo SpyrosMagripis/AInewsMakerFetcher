@@ -191,7 +191,10 @@ table {
     display: block;
     width: max-content;
     max-width: 100%;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    white-space: nowrap; /* Prevent table from wrapping */
 }
 
 table th {
@@ -201,6 +204,7 @@ table th {
 table th, table td {
     padding: 6px 13px;
     border: 1px solid #d0d7de;
+    white-space: nowrap; /* Prevent cell content from wrapping */
 }
 
 table tr {

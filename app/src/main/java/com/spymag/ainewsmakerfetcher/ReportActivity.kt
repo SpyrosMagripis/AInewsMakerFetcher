@@ -2,7 +2,6 @@ package com.spymag.ainewsmakerfetcher
 
 import android.os.Bundle
 import android.view.View
-import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
@@ -76,7 +75,7 @@ class ReportActivity : AppCompatActivity() {
         }
 
         val url = intent.getStringExtra("url")
-        val webView: WebView = findViewById(R.id.webViewContent)
+        val webView: HorizontalScrollWebView = findViewById(R.id.webViewContent)
         
         // Configure WebView
         webView.webViewClient = WebViewClient()

@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <WebView
+    <com.spymag.ainewsmakerfetcher.HorizontalScrollWebView
         android:id="@+id/webViewContent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
