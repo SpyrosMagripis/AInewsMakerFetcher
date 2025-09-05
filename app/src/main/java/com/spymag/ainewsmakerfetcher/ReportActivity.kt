@@ -16,9 +16,34 @@ import org.commonmark.ext.gfm.tables.TablesExtension
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension
 import org.commonmark.ext.task.list.items.TaskListItemsExtension
 import org.commonmark.ext.autolink.AutolinkExtension
+import org.commonmark.renderer.html.AttributeProvider
+import org.commonmark.renderer.html.AttributeProviderContext
+import org.commonmark.renderer.html.AttributeProviderFactory
+import org.commonmark.node.Node
+import org.commonmark.node.FencedCodeBlock
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
+
+class CodeLanguageAttributeProvider : AttributeProvider {
+    override fun setAttributes(node: Node, tagName: String, attributes: MutableMap<String, String>) {
+        if (node is FencedCodeBlock && tagName == "pre") {
+            val info = node.info
+            if (!info.isNullOrEmpty()) {
+                val language = info.trim().split(" ")[0]
+                attributes["class"] = "highlight language-$language"
+            } else {
+                attributes["class"] = "highlight"
+            }
+        }
+    }
+}
+
+class CodeLanguageAttributeProviderFactory : AttributeProviderFactory {
+    override fun create(context: AttributeProviderContext): AttributeProvider {
+        return CodeLanguageAttributeProvider()
+    }
+}
 
 class ReportActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,12 +81,14 @@ class ReportActivity : AppCompatActivity() {
         // Configure WebView
         webView.webViewClient = WebViewClient()
         webView.settings.apply {
-            javaScriptEnabled = false
-            builtInZoomControls = false
-            displayZoomControls = false
-            setSupportZoom(false)
+            javaScriptEnabled = false // Keep JS disabled for security
+            builtInZoomControls = true
+            displayZoomControls = false // Hide zoom controls UI but keep pinch-to-zoom
+            setSupportZoom(true)
             loadWithOverviewMode = true
             useWideViewPort = true
+            cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            textZoom = 100 // Consistent text sizing
         }
         
         if (url != null) {
@@ -94,6 +121,7 @@ class ReportActivity : AppCompatActivity() {
                     
                     val renderer = HtmlRenderer.builder()
                         .extensions(extensions)
+                        .attributeProviderFactory(CodeLanguageAttributeProviderFactory())
                         .build()
                     
                     val html = renderer.render(document)

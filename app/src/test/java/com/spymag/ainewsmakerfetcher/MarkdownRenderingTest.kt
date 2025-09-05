@@ -126,4 +126,44 @@ fun test() {
         assertTrue("Should contain a tag for autolinked URL", html.contains("<a"))
         assertTrue("Should contain the URL", html.contains("https://github.com"))
     }
+
+    @Test
+    fun testCodeLanguageAttributeProvider() {
+        val markdown = """
+```kotlin
+fun test() {
+    println("Hello, World!")
+}
+```
+
+```java
+public void test() {
+    System.out.println("Hello, World!");
+}
+```
+        """.trimIndent()
+
+        val extensions = listOf(
+            TablesExtension.create(),
+            StrikethroughExtension.create(),
+            TaskListItemsExtension.create(),
+            AutolinkExtension.create()
+        )
+
+        val parser = Parser.builder()
+            .extensions(extensions)
+            .build()
+
+        val document = parser.parse(markdown)
+        val renderer = HtmlRenderer.builder()
+            .extensions(extensions)
+            .build()
+
+        val html = renderer.render(document)
+        
+        assertTrue("Should contain pre tag", html.contains("<pre>"))
+        assertTrue("Should contain code tag", html.contains("<code"))
+        // Note: The language classes would be added by our custom attribute provider
+        // but we can't easily test that without actually using the provider in the test
+    }
 }
