@@ -12,6 +12,7 @@ import android.widget.Button
 import android.widget.ListView
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
 import org.json.JSONObject
@@ -193,7 +194,7 @@ class ReportsFragment : Fragment() {
                 action = SummaryAudioService.ACTION_PLAY
                 putExtra(SummaryAudioService.EXTRA_TEXT, text)
             }
-            requireContext().startService(intent)
+            ContextCompat.startForegroundService(requireContext(), intent)
         }
     }
 

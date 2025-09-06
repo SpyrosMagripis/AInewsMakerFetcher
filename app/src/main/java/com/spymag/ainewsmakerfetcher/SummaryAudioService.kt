@@ -95,7 +95,7 @@ class SummaryAudioService : Service(), TextToSpeech.OnInitListener {
         } else {
             builder.addAction(android.R.drawable.ic_media_play, getString(R.string.play), playPending)
         }
-        builder.addAction(android.R.drawable.ic_media_stop, getString(R.string.stop), stopPending)
+        builder.addAction(R.drawable.ic_stop, getString(R.string.stop), stopPending)
         return builder.build()
     }
 
