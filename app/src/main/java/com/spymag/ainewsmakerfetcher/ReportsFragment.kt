@@ -6,12 +6,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import android.widget.Button
 import android.widget.ListView
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.ArrayAdapter
-import android.widget.AdapterView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,7 +26,9 @@ class ReportsFragment : Fragment() {
 
     private lateinit var listView: ListView
     private lateinit var adapter: ReportAdapter
+    private lateinit var summaryContainer: View
     private lateinit var summaryView: TextView
+    private lateinit var listenButton: Button
 
     private val allReports = mutableListOf<Report>()
     private var fromDate: LocalDate? = null
@@ -42,7 +45,10 @@ class ReportsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        summaryContainer = view.findViewById(R.id.summaryContainer)
         summaryView = view.findViewById(R.id.tvSummary)
+        listenButton = view.findViewById(R.id.btnListenSummary)
+        listenButton.setOnClickListener { speakSummary() }
         val spinner: Spinner = view.findViewById(R.id.spinnerSummary)
         ArrayAdapter.createFromResource(
             requireContext(),
@@ -57,12 +63,12 @@ class ReportsFragment : Fragment() {
                 if (position == 1) {
                     generateSummary()
                 } else {
-                    summaryView.visibility = View.GONE
+                    summaryContainer.visibility = View.GONE
                 }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
-                summaryView.visibility = View.GONE
+                summaryContainer.visibility = View.GONE
             }
         }
 
@@ -150,12 +156,14 @@ class ReportsFragment : Fragment() {
     private fun generateSummary() {
         val recent = allReports.filter { !it.date.isBefore(LocalDate.now().minusDays(3)) }
         if (recent.isEmpty()) {
-            summaryView.visibility = View.VISIBLE
+            summaryContainer.visibility = View.VISIBLE
             summaryView.text = getString(R.string.summary_none)
+            listenButton.visibility = View.GONE
             return
         }
-        summaryView.visibility = View.VISIBLE
+        summaryContainer.visibility = View.VISIBLE
         summaryView.text = getString(R.string.summary_loading)
+        listenButton.visibility = View.GONE
         thread {
             try {
                 val builder = StringBuilder()
@@ -164,11 +172,29 @@ class ReportsFragment : Fragment() {
                     builder.append(text).append("\n\n")
                 }
                 val summary = fetchSummaryFromOpenAI(builder.toString())
-                activity?.runOnUiThread { summaryView.text = summary }
+                activity?.runOnUiThread {
+                    summaryView.text = summary
+                    val hide = summary == getString(R.string.summary_no_key) || summary == getString(R.string.summary_failed)
+                    listenButton.visibility = if (hide) View.GONE else View.VISIBLE
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                activity?.runOnUiThread { summaryView.text = getString(R.string.summary_failed) }
+                activity?.runOnUiThread {
+                    summaryView.text = getString(R.string.summary_failed)
+                    listenButton.visibility = View.GONE
+                }
             }
+        }
+    }
+
+    private fun speakSummary() {
+        val text = summaryView.text.toString()
+        if (text.isNotBlank()) {
+            val intent = Intent(requireContext(), SummaryAudioService::class.java).apply {
+                action = SummaryAudioService.ACTION_PLAY
+                putExtra(SummaryAudioService.EXTRA_TEXT, text)
+            }
+            ContextCompat.startForegroundService(requireContext(), intent)
         }
     }
 
@@ -204,5 +230,9 @@ class ReportsFragment : Fragment() {
             .getJSONObject("message")
             .getString("content")
             .trim()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 }
