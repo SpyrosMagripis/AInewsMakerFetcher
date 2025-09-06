@@ -26,6 +26,7 @@ class ReportsFragment : Fragment() {
 
     private lateinit var listView: ListView
     private lateinit var adapter: ReportAdapter
+    private lateinit var summaryContainer: View
     private lateinit var summaryView: TextView
     private lateinit var listenButton: Button
     private var tts: TextToSpeech? = null
@@ -45,6 +46,7 @@ class ReportsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        summaryContainer = view.findViewById(R.id.summaryContainer)
         summaryView = view.findViewById(R.id.tvSummary)
         listenButton = view.findViewById(R.id.btnListenSummary)
         listenButton.setOnClickListener { speakSummary() }
@@ -63,14 +65,12 @@ class ReportsFragment : Fragment() {
                 if (position == 1) {
                     generateSummary()
                 } else {
-                    summaryView.visibility = View.GONE
-                    listenButton.visibility = View.GONE
+                    summaryContainer.visibility = View.GONE
                 }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
-                summaryView.visibility = View.GONE
-                listenButton.visibility = View.GONE
+                summaryContainer.visibility = View.GONE
             }
         }
 
@@ -158,12 +158,12 @@ class ReportsFragment : Fragment() {
     private fun generateSummary() {
         val recent = allReports.filter { !it.date.isBefore(LocalDate.now().minusDays(3)) }
         if (recent.isEmpty()) {
-            summaryView.visibility = View.VISIBLE
+            summaryContainer.visibility = View.VISIBLE
             summaryView.text = getString(R.string.summary_none)
             listenButton.visibility = View.GONE
             return
         }
-        summaryView.visibility = View.VISIBLE
+        summaryContainer.visibility = View.VISIBLE
         summaryView.text = getString(R.string.summary_loading)
         listenButton.visibility = View.GONE
         thread {
