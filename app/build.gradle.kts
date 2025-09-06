@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.commonmark.ext.autolink)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.viewpager2)
+    implementation(libs.androidx.media)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
