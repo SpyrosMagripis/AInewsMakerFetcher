@@ -21,6 +21,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".ReportActivity" />
+        <service
+            android:name=".SummaryAudioService"
+            android:exported="false" />
     </application>
 
 </manifest>

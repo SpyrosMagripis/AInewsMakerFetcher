@@ -3,7 +3,6 @@ package com.spymag.ainewsmakerfetcher
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
-import android.speech.tts.TextToSpeech
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,7 +28,6 @@ class ReportsFragment : Fragment() {
     private lateinit var summaryContainer: View
     private lateinit var summaryView: TextView
     private lateinit var listenButton: Button
-    private var tts: TextToSpeech? = null
 
     private val allReports = mutableListOf<Report>()
     private var fromDate: LocalDate? = null
@@ -50,7 +48,6 @@ class ReportsFragment : Fragment() {
         summaryView = view.findViewById(R.id.tvSummary)
         listenButton = view.findViewById(R.id.btnListenSummary)
         listenButton.setOnClickListener { speakSummary() }
-        tts = TextToSpeech(requireContext()) { _ -> }
         val spinner: Spinner = view.findViewById(R.id.spinnerSummary)
         ArrayAdapter.createFromResource(
             requireContext(),
@@ -192,7 +189,11 @@ class ReportsFragment : Fragment() {
     private fun speakSummary() {
         val text = summaryView.text.toString()
         if (text.isNotBlank()) {
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+            val intent = Intent(requireContext(), SummaryAudioService::class.java).apply {
+                action = SummaryAudioService.ACTION_PLAY
+                putExtra(SummaryAudioService.EXTRA_TEXT, text)
+            }
+            requireContext().startService(intent)
         }
     }
 
@@ -231,7 +232,6 @@ class ReportsFragment : Fragment() {
     }
 
     override fun onDestroy() {
-        tts?.shutdown()
         super.onDestroy()
     }
 }
