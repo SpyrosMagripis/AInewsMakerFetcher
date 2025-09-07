@@ -338,7 +338,7 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
 
     private fun showNotification() {
         val playing = mediaPlayer?.isPlaying == true
-        val actionIcon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val actionIcon = if (playing) R.drawable.ic_pause else R.drawable.ic_play
         val actionTitle = if (playing) getString(R.string.pause) else getString(R.string.play)
         val toggleAction = if (playing) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
         val toggleIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
@@ -349,7 +349,7 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
         )
         val notification = NotificationCompat.Builder(requireContext(), CHANNEL_ID)
             .setContentTitle(getString(R.string.summary_notification_title))
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_play)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)
             .setOngoing(playing)

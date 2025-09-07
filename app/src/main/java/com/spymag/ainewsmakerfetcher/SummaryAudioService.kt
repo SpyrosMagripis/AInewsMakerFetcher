@@ -85,15 +85,15 @@ class SummaryAudioService : Service(), TextToSpeech.OnInitListener {
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.summary_notification_title))
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_play)
             .setStyle(MediaNotificationCompat.MediaStyle().setMediaSession(mediaSession.sessionToken))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)
 
         if (isPlaying) {
-            builder.addAction(android.R.drawable.ic_media_pause, getString(R.string.pause), pausePending)
+            builder.addAction(R.drawable.ic_pause, getString(R.string.pause), pausePending)
         } else {
-            builder.addAction(android.R.drawable.ic_media_play, getString(R.string.play), playPending)
+            builder.addAction(R.drawable.ic_play, getString(R.string.play), playPending)
         }
         builder.addAction(R.drawable.ic_stop, getString(R.string.stop), stopPending)
         return builder.build()
