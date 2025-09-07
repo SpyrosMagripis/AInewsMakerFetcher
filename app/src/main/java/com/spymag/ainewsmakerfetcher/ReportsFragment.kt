@@ -2,7 +2,12 @@ package com.spymag.ainewsmakerfetcher
 
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.media.MediaPlayer
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,9 +15,9 @@ import android.widget.ArrayAdapter
 import android.widget.AdapterView
 import android.widget.Button
 import android.widget.ListView
+import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,13 +27,30 @@ import java.time.LocalDate
 import java.util.Calendar
 import kotlin.concurrent.thread
 
-class ReportsFragment : Fragment() {
+class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
 
     private lateinit var listView: ListView
     private lateinit var adapter: ReportAdapter
     private lateinit var summaryContainer: View
     private lateinit var summaryView: TextView
     private lateinit var listenButton: Button
+    private lateinit var seekBar: SeekBar
+    private lateinit var timeView: TextView
+    private var tts: TextToSpeech? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private var audioFile: java.io.File? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val updateRunnable = object : Runnable {
+        override fun run() {
+            mediaPlayer?.let { mp ->
+                val pos = mp.currentPosition
+                val dur = mp.duration
+                seekBar.progress = pos
+                timeView.text = "${formatTime(pos)} / ${formatTime(dur)}"
+                handler.postDelayed(this, 500)
+            }
+        }
+    }
 
     private val allReports = mutableListOf<Report>()
     private var fromDate: LocalDate? = null
@@ -48,7 +70,23 @@ class ReportsFragment : Fragment() {
         summaryContainer = view.findViewById(R.id.summaryContainer)
         summaryView = view.findViewById(R.id.tvSummary)
         listenButton = view.findViewById(R.id.btnListenSummary)
-        listenButton.setOnClickListener { speakSummary() }
+        seekBar = view.findViewById(R.id.audioSeekBar)
+        timeView = view.findViewById(R.id.tvAudioTime)
+        tts = TextToSpeech(requireContext(), this)
+        listenButton.setOnClickListener { togglePlayback() }
+        seekBar.isEnabled = false
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    mediaPlayer?.seekTo(progress)
+                    timeView.text = "${formatTime(progress)} / ${formatTime(mediaPlayer?.duration ?: 0)}"
+                }
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+
+            override fun onStopTrackingTouch(sb: SeekBar?) {}
+        })
         val spinner: Spinner = view.findViewById(R.id.spinnerSummary)
         ArrayAdapter.createFromResource(
             requireContext(),
@@ -187,15 +225,66 @@ class ReportsFragment : Fragment() {
         }
     }
 
-    private fun speakSummary() {
+    private fun togglePlayback() {
+        mediaPlayer?.let { mp ->
+            if (mp.isPlaying) {
+                mp.pause()
+                listenButton.text = getString(R.string.play)
+            } else {
+                mp.start()
+                listenButton.text = getString(R.string.pause)
+                handler.post(updateRunnable)
+            }
+            return
+        }
         val text = summaryView.text.toString()
         if (text.isNotBlank()) {
-            val intent = Intent(requireContext(), SummaryAudioService::class.java).apply {
-                action = SummaryAudioService.ACTION_PLAY
-                putExtra(SummaryAudioService.EXTRA_TEXT, text)
-            }
-            ContextCompat.startForegroundService(requireContext(), intent)
+            synthesizeAndPlay(text)
         }
+    }
+
+    private fun synthesizeAndPlay(text: String) {
+        listenButton.isEnabled = false
+        audioFile = java.io.File(requireContext().cacheDir, "summary.wav")
+        val file = audioFile!!
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String) {}
+            override fun onError(utteranceId: String) {
+                activity?.runOnUiThread { listenButton.isEnabled = true }
+            }
+            override fun onDone(utteranceId: String) {
+                activity?.runOnUiThread {
+                    prepareMediaPlayer(file)
+                    listenButton.isEnabled = true
+                    listenButton.text = getString(R.string.pause)
+                    mediaPlayer?.start()
+                    handler.post(updateRunnable)
+                }
+            }
+        })
+        tts?.synthesizeToFile(text, null, file, "summary")
+    }
+
+    private fun prepareMediaPlayer(file: java.io.File) {
+        mediaPlayer?.release()
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(file.absolutePath)
+            prepare()
+            seekBar.max = duration
+            setOnCompletionListener {
+                listenButton.text = getString(R.string.play)
+                handler.removeCallbacks(updateRunnable)
+            }
+        }
+        seekBar.isEnabled = true
+        timeView.text = "0:00 / ${formatTime(mediaPlayer?.duration ?: 0)}"
+    }
+
+    private fun formatTime(ms: Int): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%d:%02d", minutes, seconds)
     }
 
     private fun fetchSummaryFromOpenAI(text: String): String {
@@ -232,7 +321,14 @@ class ReportsFragment : Fragment() {
             .trim()
     }
 
+    override fun onInit(status: Int) {}
+
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(updateRunnable)
+        mediaPlayer?.release()
+        mediaPlayer = null
+        tts?.shutdown()
+        tts = null
     }
 }
