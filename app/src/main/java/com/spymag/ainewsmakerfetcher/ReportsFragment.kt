@@ -3,11 +3,7 @@ package com.spymag.ainewsmakerfetcher
 import android.app.DatePickerDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
@@ -30,6 +26,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import android.support.v4.media.MediaMetadataCompat
+import androidx.media.session.MediaButtonReceiver
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -43,8 +42,6 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
     companion object {
         private const val CHANNEL_ID = "summary_audio"
         private const val NOTIFICATION_ID = 1
-        private const val ACTION_TOGGLE = "com.spymag.ainewsmakerfetcher.action.TOGGLE"
-        private const val ACTION_STOP = "com.spymag.ainewsmakerfetcher.action.STOP"
     }
 
     private lateinit var listView: ListView
@@ -65,24 +62,30 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
                 val dur = mp.duration
                 seekBar.progress = pos
                 timeView.text = "${formatTime(pos)} / ${formatTime(dur)}"
+                updatePlaybackState(mp.isPlaying)
                 handler.postDelayed(this, 500)
             }
         }
     }
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var mediaSession: MediaSessionCompat
-    private val notificationReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                ACTION_TOGGLE -> {
-                    togglePlayback()
-                    showNotification()
-                }
-                ACTION_STOP -> {
-                    stopPlayback()
-                    notificationManager.cancel(NOTIFICATION_ID)
-                }
-            }
+    private val sessionCallback = object : MediaSessionCompat.Callback() {
+        override fun onPlay() {
+            togglePlayback()
+        }
+
+        override fun onPause() {
+            togglePlayback()
+        }
+
+        override fun onStop() {
+            stopPlayback()
+            notificationManager.cancel(NOTIFICATION_ID)
+        }
+
+        override fun onSeekTo(pos: Long) {
+            mediaPlayer?.seekTo(pos.toInt())
+            updatePlaybackState(mediaPlayer?.isPlaying == true)
         }
     }
 
@@ -108,23 +111,11 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
         timeView = view.findViewById(R.id.tvAudioTime)
         tts = TextToSpeech(requireContext(), this)
         notificationManager = NotificationManagerCompat.from(requireContext())
-        mediaSession = MediaSessionCompat(requireContext(), "summary_audio_session")
-        mediaSession.isActive = true
+        mediaSession = MediaSessionCompat(requireContext(), "summary_audio_session").apply {
+            setCallback(sessionCallback)
+            isActive = true
+        }
         createNotificationChannel()
-        val filter = IntentFilter().apply {
-            addAction(ACTION_TOGGLE)
-            addAction(ACTION_STOP)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(
-                notificationReceiver,
-                filter,
-                Context.RECEIVER_NOT_EXPORTED
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            requireContext().registerReceiver(notificationReceiver, filter)
-        }
         listenButton.setOnClickListener { togglePlayback() }
         seekBar.isEnabled = false
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -282,10 +273,12 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             if (mp.isPlaying) {
                 mp.pause()
                 listenButton.text = getString(R.string.play)
+                updatePlaybackState(false)
             } else {
                 mp.start()
                 listenButton.text = getString(R.string.pause)
                 handler.post(updateRunnable)
+                updatePlaybackState(true)
             }
             showNotification()
             return
@@ -312,6 +305,7 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
                     listenButton.text = getString(R.string.pause)
                     mediaPlayer?.start()
                     handler.post(updateRunnable)
+                    updatePlaybackState(true)
                     showNotification()
                 }
             }
@@ -329,23 +323,29 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
                 listenButton.text = getString(R.string.play)
                 handler.removeCallbacks(updateRunnable)
                 notificationManager.cancel(NOTIFICATION_ID)
+                updatePlaybackState(false)
             }
         }
         seekBar.isEnabled = true
         timeView.text = "0:00 / ${formatTime(mediaPlayer?.duration ?: 0)}"
+        mediaSession.setMetadata(
+            MediaMetadataCompat.Builder()
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mediaPlayer?.duration?.toLong() ?: 0L)
+                .build()
+        )
+        updatePlaybackState(false)
     }
 
     private fun showNotification() {
         val playing = mediaPlayer?.isPlaying == true
         val actionIcon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
         val actionTitle = if (playing) getString(R.string.pause) else getString(R.string.play)
-        val toggleIntent = Intent(ACTION_TOGGLE)
-        val togglePending = PendingIntent.getBroadcast(
-            requireContext(), 0, toggleIntent, PendingIntent.FLAG_IMMUTABLE
+        val toggleAction = if (playing) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
+        val toggleIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            requireContext(), toggleAction
         )
-        val stopIntent = Intent(ACTION_STOP)
-        val stopPending = PendingIntent.getBroadcast(
-            requireContext(), 1, stopIntent, PendingIntent.FLAG_IMMUTABLE
+        val stopIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            requireContext(), PlaybackStateCompat.ACTION_STOP
         )
         val notification = NotificationCompat.Builder(requireContext(), CHANNEL_ID)
             .setContentTitle(getString(R.string.summary_notification_title))
@@ -353,9 +353,13 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)
             .setOngoing(playing)
-            .setStyle(MediaNotificationCompat.MediaStyle().setMediaSession(mediaSession.sessionToken))
-            .addAction(actionIcon, actionTitle, togglePending)
-            .addAction(R.drawable.ic_stop, getString(R.string.stop), stopPending)
+            .setStyle(
+                MediaNotificationCompat.MediaStyle()
+                    .setMediaSession(mediaSession.sessionToken)
+                    .setShowActionsInCompactView(0, 1)
+            )
+            .addAction(actionIcon, actionTitle, toggleIntent)
+            .addAction(R.drawable.ic_stop, getString(R.string.stop), stopIntent)
             .build()
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
@@ -371,6 +375,23 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             timeView.text = "0:00 / 0:00"
         }
         audioFile = null
+        updatePlaybackState(false)
+    }
+
+    private fun updatePlaybackState(playing: Boolean) {
+        val state = if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
+        val position = mediaPlayer?.currentPosition?.toLong() ?: 0L
+        val actions = PlaybackStateCompat.ACTION_PLAY or
+                PlaybackStateCompat.ACTION_PAUSE or
+                PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                PlaybackStateCompat.ACTION_STOP or
+                PlaybackStateCompat.ACTION_SEEK_TO
+        mediaSession.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setActions(actions)
+                .setState(state, position, 1.0f)
+                .build()
+        )
     }
 
     private fun createNotificationChannel() {
@@ -430,7 +451,6 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(updateRunnable)
-        context?.unregisterReceiver(notificationReceiver)
         notificationManager.cancel(NOTIFICATION_ID)
         mediaSession.release()
         stopPlayback()
