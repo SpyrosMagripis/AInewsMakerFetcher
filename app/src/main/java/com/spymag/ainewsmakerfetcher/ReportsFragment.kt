@@ -1,19 +1,34 @@
 package com.spymag.ainewsmakerfetcher
 
 import android.app.DatePickerDialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ListView
+import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
-import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
+import androidx.media.app.NotificationCompat as MediaNotificationCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import android.support.v4.media.MediaMetadataCompat
+import androidx.media.session.MediaButtonReceiver
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -22,13 +37,57 @@ import java.time.LocalDate
 import java.util.Calendar
 import kotlin.concurrent.thread
 
-class ReportsFragment : Fragment() {
+class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
+
+    companion object {
+        private const val CHANNEL_ID = "summary_audio"
+        private const val NOTIFICATION_ID = 1
+    }
 
     private lateinit var listView: ListView
     private lateinit var adapter: ReportAdapter
     private lateinit var summaryContainer: View
     private lateinit var summaryView: TextView
     private lateinit var listenButton: Button
+    private lateinit var seekBar: SeekBar
+    private lateinit var timeView: TextView
+    private var tts: TextToSpeech? = null
+    private var mediaPlayer: MediaPlayer? = null
+    private var audioFile: java.io.File? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val updateRunnable = object : Runnable {
+        override fun run() {
+            mediaPlayer?.let { mp ->
+                val pos = mp.currentPosition
+                val dur = mp.duration
+                seekBar.progress = pos
+                timeView.text = "${formatTime(pos)} / ${formatTime(dur)}"
+                updatePlaybackState(mp.isPlaying)
+                handler.postDelayed(this, 500)
+            }
+        }
+    }
+    private lateinit var notificationManager: NotificationManagerCompat
+    private lateinit var mediaSession: MediaSessionCompat
+    private val sessionCallback = object : MediaSessionCompat.Callback() {
+        override fun onPlay() {
+            togglePlayback()
+        }
+
+        override fun onPause() {
+            togglePlayback()
+        }
+
+        override fun onStop() {
+            stopPlayback()
+            notificationManager.cancel(NOTIFICATION_ID)
+        }
+
+        override fun onSeekTo(pos: Long) {
+            mediaPlayer?.seekTo(pos.toInt())
+            updatePlaybackState(mediaPlayer?.isPlaying == true)
+        }
+    }
 
     private val allReports = mutableListOf<Report>()
     private var fromDate: LocalDate? = null
@@ -48,7 +107,29 @@ class ReportsFragment : Fragment() {
         summaryContainer = view.findViewById(R.id.summaryContainer)
         summaryView = view.findViewById(R.id.tvSummary)
         listenButton = view.findViewById(R.id.btnListenSummary)
-        listenButton.setOnClickListener { speakSummary() }
+        seekBar = view.findViewById(R.id.audioSeekBar)
+        timeView = view.findViewById(R.id.tvAudioTime)
+        tts = TextToSpeech(requireContext(), this)
+        notificationManager = NotificationManagerCompat.from(requireContext())
+        mediaSession = MediaSessionCompat(requireContext(), "summary_audio_session").apply {
+            setCallback(sessionCallback)
+            isActive = true
+        }
+        createNotificationChannel()
+        listenButton.setOnClickListener { togglePlayback() }
+        seekBar.isEnabled = false
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    mediaPlayer?.seekTo(progress)
+                    timeView.text = "${formatTime(progress)} / ${formatTime(mediaPlayer?.duration ?: 0)}"
+                }
+            }
+
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+
+            override fun onStopTrackingTouch(sb: SeekBar?) {}
+        })
         val spinner: Spinner = view.findViewById(R.id.spinnerSummary)
         ArrayAdapter.createFromResource(
             requireContext(),
@@ -187,15 +268,148 @@ class ReportsFragment : Fragment() {
         }
     }
 
-    private fun speakSummary() {
+    private fun togglePlayback() {
+        mediaPlayer?.let { mp ->
+            if (mp.isPlaying) {
+                mp.pause()
+                listenButton.text = getString(R.string.play)
+                updatePlaybackState(false)
+            } else {
+                mp.start()
+                listenButton.text = getString(R.string.pause)
+                handler.post(updateRunnable)
+                updatePlaybackState(true)
+            }
+            showNotification()
+            return
+        }
         val text = summaryView.text.toString()
         if (text.isNotBlank()) {
-            val intent = Intent(requireContext(), SummaryAudioService::class.java).apply {
-                action = SummaryAudioService.ACTION_PLAY
-                putExtra(SummaryAudioService.EXTRA_TEXT, text)
-            }
-            ContextCompat.startForegroundService(requireContext(), intent)
+            synthesizeAndPlay(text)
         }
+    }
+
+    private fun synthesizeAndPlay(text: String) {
+        listenButton.isEnabled = false
+        audioFile = java.io.File(requireContext().cacheDir, "summary.wav")
+        val file = audioFile!!
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String) {}
+            override fun onError(utteranceId: String) {
+                activity?.runOnUiThread { listenButton.isEnabled = true }
+            }
+            override fun onDone(utteranceId: String) {
+                activity?.runOnUiThread {
+                    prepareMediaPlayer(file)
+                    listenButton.isEnabled = true
+                    listenButton.text = getString(R.string.pause)
+                    mediaPlayer?.start()
+                    handler.post(updateRunnable)
+                    updatePlaybackState(true)
+                    showNotification()
+                }
+            }
+        })
+        tts?.synthesizeToFile(text, null, file, "summary")
+    }
+
+    private fun prepareMediaPlayer(file: java.io.File) {
+        mediaPlayer?.release()
+        mediaPlayer = MediaPlayer().apply {
+            setDataSource(file.absolutePath)
+            prepare()
+            seekBar.max = duration
+            setOnCompletionListener {
+                listenButton.text = getString(R.string.play)
+                handler.removeCallbacks(updateRunnable)
+                notificationManager.cancel(NOTIFICATION_ID)
+                updatePlaybackState(false)
+            }
+        }
+        seekBar.isEnabled = true
+        timeView.text = "0:00 / ${formatTime(mediaPlayer?.duration ?: 0)}"
+        mediaSession.setMetadata(
+            MediaMetadataCompat.Builder()
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mediaPlayer?.duration?.toLong() ?: 0L)
+                .build()
+        )
+        updatePlaybackState(false)
+    }
+
+    private fun showNotification() {
+        val playing = mediaPlayer?.isPlaying == true
+        val actionIcon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val actionTitle = if (playing) getString(R.string.pause) else getString(R.string.play)
+        val toggleAction = if (playing) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
+        val toggleIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            requireContext(), toggleAction
+        )
+        val stopIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(
+            requireContext(), PlaybackStateCompat.ACTION_STOP
+        )
+        val notification = NotificationCompat.Builder(requireContext(), CHANNEL_ID)
+            .setContentTitle(getString(R.string.summary_notification_title))
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOnlyAlertOnce(true)
+            .setOngoing(playing)
+            .setStyle(
+                MediaNotificationCompat.MediaStyle()
+                    .setMediaSession(mediaSession.sessionToken)
+                    .setShowActionsInCompactView(0, 1)
+            )
+            .addAction(actionIcon, actionTitle, toggleIntent)
+            .addAction(R.drawable.ic_stop, getString(R.string.stop), stopIntent)
+            .build()
+        notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    private fun stopPlayback() {
+        mediaPlayer?.release()
+        mediaPlayer = null
+        handler.removeCallbacks(updateRunnable)
+        if (this::listenButton.isInitialized) {
+            listenButton.text = getString(R.string.play)
+            seekBar.progress = 0
+            seekBar.isEnabled = false
+            timeView.text = "0:00 / 0:00"
+        }
+        audioFile = null
+        updatePlaybackState(false)
+    }
+
+    private fun updatePlaybackState(playing: Boolean) {
+        val state = if (playing) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
+        val position = mediaPlayer?.currentPosition?.toLong() ?: 0L
+        val actions = PlaybackStateCompat.ACTION_PLAY or
+                PlaybackStateCompat.ACTION_PAUSE or
+                PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                PlaybackStateCompat.ACTION_STOP or
+                PlaybackStateCompat.ACTION_SEEK_TO
+        mediaSession.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setActions(actions)
+                .setState(state, position, 1.0f)
+                .build()
+        )
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                getString(R.string.summary_playback_channel),
+                NotificationManager.IMPORTANCE_LOW
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun formatTime(ms: Int): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%d:%02d", minutes, seconds)
     }
 
     private fun fetchSummaryFromOpenAI(text: String): String {
@@ -232,7 +446,15 @@ class ReportsFragment : Fragment() {
             .trim()
     }
 
+    override fun onInit(status: Int) {}
+
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(updateRunnable)
+        notificationManager.cancel(NOTIFICATION_ID)
+        mediaSession.release()
+        stopPlayback()
+        tts?.shutdown()
+        tts = null
     }
 }
