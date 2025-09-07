@@ -115,7 +115,16 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             addAction(ACTION_TOGGLE)
             addAction(ACTION_STOP)
         }
-        requireContext().registerReceiver(notificationReceiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requireContext().registerReceiver(
+                notificationReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            requireContext().registerReceiver(notificationReceiver, filter)
+        }
         listenButton.setOnClickListener { togglePlayback() }
         seekBar.isEnabled = false
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
