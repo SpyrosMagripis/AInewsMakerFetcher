@@ -1,9 +1,13 @@
 package com.spymag.ainewsmakerfetcher
 
+import android.content.Intent
+import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -78,7 +82,16 @@ class ReportActivity : AppCompatActivity() {
         val webView: HorizontalScrollWebView = findViewById(R.id.webViewContent)
         
         // Configure WebView
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): Boolean {
+                val uri = request?.url ?: return false
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+                return true
+            }
+        }
         webView.settings.apply {
             javaScriptEnabled = false // Keep JS disabled for security
             builtInZoomControls = true
