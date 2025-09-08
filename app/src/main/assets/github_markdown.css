@@ -46,15 +46,11 @@ body {
     table th, table td {
         border-color: #30363d;
         color: #c9d1d9;
+        background-color: #0d1117;
     }
 
     table th {
-        background-color: #161b22;
         color: #f0f6fc;
-    }
-
-    table tr:nth-child(2n) td {
-        background-color: #161b22;
     }
     
     a {
