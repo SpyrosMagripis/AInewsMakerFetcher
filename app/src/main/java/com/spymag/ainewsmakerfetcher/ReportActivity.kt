@@ -13,6 +13,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.google.android.material.appbar.MaterialToolbar
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 import org.commonmark.ext.gfm.tables.TablesExtension
@@ -53,6 +54,10 @@ class ReportActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_report)
+        val toolbar: MaterialToolbar = findViewById(R.id.topAppBar)
+        setSupportActionBar(toolbar)
+        toolbar.setNavigationIcon(android.R.drawable.ic_menu_close_clear_cancel)
+        toolbar.setNavigationOnClickListener { finish() }
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.show(WindowInsetsCompat.Type.systemBars())
         val isLightMode =
@@ -61,9 +66,6 @@ class ReportActivity : AppCompatActivity() {
         controller.isAppearanceLightStatusBars = isLightMode
 
         val root: View = findViewById(R.id.rootLayout)
-        val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.actionBarSize))
-        val actionBarHeight = typedArray.getDimensionPixelSize(0, 0)
-        typedArray.recycle()
         val start = root.paddingLeft
         val end = root.paddingRight
         val bottom = root.paddingBottom
@@ -71,7 +73,7 @@ class ReportActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(
                 start + systemBars.left,
-                systemBars.top + actionBarHeight,
+                systemBars.top,
                 end + systemBars.right,
                 bottom + systemBars.bottom
             )

@@ -13,6 +13,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import com.google.android.material.appbar.MaterialToolbar
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +25,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
+        val toolbar: MaterialToolbar = findViewById(R.id.topAppBar)
+        setSupportActionBar(toolbar)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.show(WindowInsetsCompat.Type.systemBars())
         val isLightMode =
@@ -32,9 +35,6 @@ class MainActivity : AppCompatActivity() {
         controller.isAppearanceLightStatusBars = isLightMode
 
         val root: View = findViewById(R.id.rootLayout)
-        val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.actionBarSize))
-        val actionBarHeight = typedArray.getDimensionPixelSize(0, 0)
-        typedArray.recycle()
         val start = root.paddingLeft
         val end = root.paddingRight
         val bottom = root.paddingBottom
@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(
                 start + systemBars.left,
-                systemBars.top + actionBarHeight,
+                systemBars.top,
                 end + systemBars.right,
                 bottom + systemBars.bottom
             )
