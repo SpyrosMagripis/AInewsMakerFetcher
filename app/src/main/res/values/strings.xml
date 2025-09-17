@@ -23,4 +23,14 @@
     <string name="stop">Stop</string>
     <string name="tab_reports">AI News</string>
     <string name="tab_actions">Actions for today</string>
+    <string name="check_interval_title">Inventory check interval</string>
+    <string name="check_interval_description">We monitor your recurring staples every time you snap a pantry photo.</string>
+    <string name="check_interval_value">Every %1$d days</string>
+    <string name="check_interval_hint">Choose between 7 and 30 days.</string>
+    <string name="check_interval_slider_content_description">Select how many days should pass between pantry checks.</string>
+    <string name="check_next_date_value">Next check after %1$s</string>
+    <string name="check_next_date_unknown">Take a pantry photo to start tracking.</string>
+    <string name="shopping_report_none">No missing common items yet.</string>
+    <string name="shopping_report_message">On %1$s we noticed you were out of: %2$s</string>
+    <string name="shopping_report_toast">Missing staples: %1$s</string>
 </resources>
