@@ -28,8 +28,12 @@ android {
         val openAiKey = localProperties.getProperty("OPENAI_API_KEY", "")
         buildConfigField("String", "OPENAI_API_KEY", "\"$openAiKey\"")
 
-        // Add the GitHub PAT as a BuildConfig field
-        buildConfigField("String", "GITHUB_PAT", "\"${localProperties.getProperty("repoPat", "")}\"")
+        // News repo PAT (AInewsMaker)
+        val newsPat = localProperties.getProperty("repoPat_news", "")
+        buildConfigField("String", "GITHUB_PAT_NEWS", "\"$newsPat\"")
+        // Actions repo PAT (FilesServer)
+        val actionsPat = localProperties.getProperty("repoPat_actions", "")
+        buildConfigField("String", "GITHUB_PAT_ACTIONS", "\"$actionsPat\"")
     }
 
     buildTypes {

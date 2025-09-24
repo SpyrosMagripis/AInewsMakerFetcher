@@ -23,6 +23,8 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import androidx.fragment.app.Fragment
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -36,6 +38,7 @@ import java.net.URL
 import java.time.LocalDate
 import java.util.Calendar
 import kotlin.concurrent.thread
+import android.widget.Toast
 
 class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
 
@@ -93,6 +96,10 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
     private var fromDate: LocalDate? = null
     private var toDate: LocalDate? = null
 
+    private lateinit var tokenWarning: View
+    private lateinit var tokenRetryButton: Button
+    private lateinit var tokenMessage: TextView
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -109,6 +116,9 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
         listenButton = view.findViewById(R.id.btnListenSummary)
         seekBar = view.findViewById(R.id.audioSeekBar)
         timeView = view.findViewById(R.id.tvAudioTime)
+        tokenWarning = view.findViewById(R.id.tokenWarning)
+        tokenRetryButton = view.findViewById(R.id.btnTokenRetry)
+        tokenMessage = view.findViewById(R.id.tokenMessage)
         tts = TextToSpeech(requireContext(), this)
         notificationManager = NotificationManagerCompat.from(requireContext())
         mediaSession = MediaSessionCompat(requireContext(), "summary_audio_session").apply {
@@ -179,6 +189,13 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             applyFilter()
         } }
 
+        tokenRetryButton.setOnClickListener { fetchReports() }
+        if (BuildConfig.GITHUB_PAT_NEWS.isBlank()) {
+            showTokenWarning(getString(R.string.token_missing_message))
+        } else {
+            tokenWarning.visibility = View.GONE
+        }
+
         fetchReports()
     }
 
@@ -187,20 +204,78 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
     }
 
     private fun fetchReports() {
+        if (BuildConfig.GITHUB_PAT_NEWS.isBlank()) {
+            activity?.runOnUiThread {
+                showTokenWarning(getString(R.string.token_missing_message))
+            }
+            return
+        }
         thread {
             try {
-                val url = URL("https://api.github.com/repos/spymag/AInewsMaker/contents/reports")
-                val conn = url.openConnection() as HttpURLConnection
+                val urlStr = "https://api.github.com/repos/spymag/AInewsMaker/contents/reports"
+                val conn = openAuthorizedConnection(urlStr)
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
                 conn.connect()
-                val json = conn.inputStream.bufferedReader().use { it.readText() }
-                val fetched = parseReports(json)
-                allReports.clear()
-                allReports.addAll(fetched)
-                activity?.runOnUiThread { applyFilter() }
+                val code = conn.responseCode
+                if (code in 200..299) {
+                    val json = conn.inputStream.bufferedReader().use { it.readText() }
+                    val fetched = parseReports(json)
+                    allReports.clear()
+                    allReports.addAll(fetched)
+                    activity?.runOnUiThread { applyFilter() }
+                } else {
+                    val msg = when (code) {
+                        401, 403 -> {
+                            activity?.runOnUiThread {
+                                showTokenWarning("Access denied (HTTP $code). Check that your token in local.properties has read access to repo contents.")
+                            }
+                            "Unauthorized/Forbidden. Provide a valid GitHub token in local.properties (repoPat=...)"
+                        }
+                        404 -> {
+                            activity?.runOnUiThread {
+                                showTokenWarning("Repository or path not found (HTTP 404). Ensure the repo name and path are correct and token has access.")
+                            }
+                            "Not found (private repo?). Ensure token has repo contents read access."
+                        }
+                        else -> "GitHub API error $code"
+                    }
+                    activity?.runOnUiThread {
+                        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
+                activity?.runOnUiThread {
+                    showTokenWarning("Failed to fetch reports: ${e.message}")
+                    Toast.makeText(requireContext(), "Failed to fetch reports: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
+    }
+
+    private fun openAuthorizedConnection(urlStr: String): HttpURLConnection {
+        val conn = URL(urlStr).openConnection() as HttpURLConnection
+        val pat = BuildConfig.GITHUB_PAT_NEWS
+        if (!pat.isNullOrBlank()) {
+            // GitHub accepts either token or Bearer; use Bearer for modern style
+            conn.setRequestProperty("Authorization", "Bearer $pat")
+        }
+        conn.setRequestProperty("User-Agent", "AInewsMakerFetcher")
+        return conn
+    }
+
+    private fun fetchContentWithAuth(rawUrl: String): String {
+        val conn = openAuthorizedConnection(rawUrl)
+        if (rawUrl.contains("/contents/")) {
+            // Request raw file directly via API when using contents endpoint (needed for private repos)
+            conn.setRequestProperty("Accept", "application/vnd.github.v3.raw")
+        }
+        conn.connect()
+        val code = conn.responseCode
+        if (code !in 200..299) {
+            throw IllegalStateException("HTTP $code while fetching content")
+        }
+        return conn.inputStream.bufferedReader().use { it.readText() }
     }
 
     private fun parseReports(json: String): List<Report> {
@@ -210,9 +285,11 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             val obj = arr.getJSONObject(i)
             val name = obj.getString("name")
             if (name.endsWith(".md")) {
-                val url = obj.getString("download_url")
+                val downloadUrl = obj.optString("download_url", "")
+                val apiUrl = obj.getString("url") // Always present
+                val contentUrl = if (downloadUrl.isBlank() || downloadUrl == "null") apiUrl else downloadUrl
                 val date = parseDateFromFileName(name) ?: LocalDate.MIN
-                list.add(Report(name, date, url))
+                list.add(Report(name, date, contentUrl))
             }
         }
         return list.sortedByDescending { it.date }
@@ -249,10 +326,16 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
             try {
                 val builder = StringBuilder()
                 recent.forEach { report ->
-                    val text = URL(report.url).readText()
-                    builder.append(text).append("\n\n")
+                    try {
+                        val text = fetchContentWithAuth(report.url)
+                        builder.append(text).append("\n\n")
+                    } catch (inner: Exception) {
+                        inner.printStackTrace()
+                    }
                 }
-                val summary = fetchSummaryFromOpenAI(builder.toString())
+                val combined = builder.toString()
+                if (combined.isBlank()) throw IllegalStateException("No content fetched")
+                val summary = fetchSummaryFromOpenAI(combined)
                 activity?.runOnUiThread {
                     summaryView.text = summary
                     val hide = summary == getString(R.string.summary_no_key) || summary == getString(R.string.summary_failed)
@@ -338,6 +421,16 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
 
     private fun showNotification() {
         val playing = mediaPlayer?.isPlaying == true
+        if (Build.VERSION.SDK_INT >= 33) {
+            val granted = ContextCompat.checkSelfPermission(
+                requireContext(),
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                // Skip posting notification silently if not granted
+                return
+            }
+        }
         val actionIcon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
         val actionTitle = if (playing) getString(R.string.pause) else getString(R.string.play)
         val toggleAction = if (playing) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY
@@ -456,5 +549,10 @@ class ReportsFragment : Fragment(), TextToSpeech.OnInitListener {
         stopPlayback()
         tts?.shutdown()
         tts = null
+    }
+
+    private fun showTokenWarning(message: String) {
+        tokenMessage.text = message
+        tokenWarning.visibility = View.VISIBLE
     }
 }

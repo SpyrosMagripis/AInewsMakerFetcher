@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ListView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import org.json.JSONArray
@@ -26,6 +27,10 @@ class ActionsFragment : Fragment() {
     private val allActions = mutableListOf<Report>()
     private var fromDate: LocalDate? = null
     private var toDate: LocalDate? = null
+
+    private lateinit var tokenWarning: View
+    private lateinit var tokenRetryButton: Button
+    private lateinit var tokenMessage: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,6 +55,11 @@ class ActionsFragment : Fragment() {
             }
         }
 
+        tokenWarning = view.findViewById(R.id.tokenWarning)
+        tokenRetryButton = view.findViewById(R.id.btnTokenRetry)
+        tokenMessage = view.findViewById(R.id.tokenMessage)
+        tokenRetryButton.setOnClickListener { fetchActions() }
+
         view.findViewById<Button>(R.id.btnClearFilter).setOnClickListener {
             fromDate = null
             toDate = null
@@ -64,6 +74,12 @@ class ActionsFragment : Fragment() {
             applyFilter()
         } }
 
+        if (BuildConfig.GITHUB_PAT_ACTIONS.isBlank()) {
+            showTokenWarning(getString(R.string.token_missing_message))
+        } else {
+            tokenWarning.visibility = View.GONE
+        }
+
         fetchActions()
     }
 
@@ -72,45 +88,63 @@ class ActionsFragment : Fragment() {
     }
 
     private fun fetchActions() {
+        if (BuildConfig.GITHUB_PAT_ACTIONS.isBlank()) {
+            activity?.runOnUiThread { showTokenWarning(getString(R.string.token_missing_message)) }
+            return
+        }
         thread {
             try {
-                val url = URL("https://api.github.com/repos/SpyrosMagripis/FilesServer/contents/ActionsForToday")
-                val conn = url.openConnection() as HttpURLConnection
-                
-                // Add GitHub authentication if PAT is available
-                val githubPat = BuildConfig.GITHUB_PAT
-                if (githubPat.isNotEmpty()) {
-                    conn.setRequestProperty("Authorization", "Bearer $githubPat")
-                }
-                
+                val urlStr = "https://api.github.com/repos/SpyrosMagripis/FilesServer/contents/ActionsForToday"
+                val conn = openAuthorizedConnection(urlStr)
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
                 conn.connect()
-                val json = conn.inputStream.bufferedReader().use { it.readText() }
-                val fetched = parseActions(json)
-                allActions.clear()
-                allActions.addAll(fetched)
-                activity?.runOnUiThread { applyFilter() }
+                val code = conn.responseCode
+                if (code in 200..299) {
+                    val json = conn.inputStream.bufferedReader().use { it.readText() }
+                    val fetched = parseActions(json)
+                    allActions.clear()
+                    allActions.addAll(fetched)
+                    activity?.runOnUiThread { applyFilter() }
+                } else {
+                    val msg = when (code) {
+                        401, 403 -> {
+                            activity?.runOnUiThread { showTokenWarning("Access denied (HTTP $code). Check repoPat_actions token.") }
+                            "Unauthorized/Forbidden. Check repoPat_actions token permissions."
+                        }
+                        404 -> {
+                            activity?.runOnUiThread { showTokenWarning("Path not found (HTTP 404). Verify folder and token access.") }
+                            "Not found (private repo?)."
+                        }
+                        else -> "GitHub API error $code"
+                    }
+                    activity?.runOnUiThread {
+                        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                    }
+                }
             } catch (e: FileNotFoundException) {
-                // Repository not found or private repository without authentication
                 activity?.runOnUiThread {
-                    Toast.makeText(
-                        requireContext(),
-                        "Cannot access 'SpyrosMagripis/FilesServer'. If it's a private repository, make sure the GitHub PAT is correctly set in local.properties.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showTokenWarning("Cannot access FilesServer repo. Check token.")
+                    Toast.makeText(requireContext(), "Cannot access FilesServer repo (private?).", Toast.LENGTH_LONG).show()
                 }
                 e.printStackTrace()
             } catch (e: Exception) {
-                // Handle other errors
                 activity?.runOnUiThread {
-                    Toast.makeText(
-                        requireContext(),
-                        "Error fetching actions: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showTokenWarning("Error fetching actions: ${e.message}")
+                    Toast.makeText(requireContext(), "Error fetching actions: ${e.message}", Toast.LENGTH_LONG).show()
                 }
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun openAuthorizedConnection(urlStr: String): HttpURLConnection {
+        val conn = URL(urlStr).openConnection() as HttpURLConnection
+        val pat = BuildConfig.GITHUB_PAT_ACTIONS
+        if (pat.isNotBlank()) {
+            conn.setRequestProperty("Authorization", "Bearer $pat")
+        }
+        conn.setRequestProperty("User-Agent", "AInewsMakerFetcher")
+        return conn
     }
 
     private fun parseActions(json: String): List<Report> {
@@ -120,9 +154,11 @@ class ActionsFragment : Fragment() {
             val obj = arr.getJSONObject(i)
             val name = obj.getString("name")
             if (name.endsWith(".md")) {
-                val url = obj.getString("download_url")
+                val downloadUrl = obj.optString("download_url", "")
+                val apiUrl = obj.getString("url")
+                val contentUrl = if (downloadUrl.isBlank() || downloadUrl == "null") apiUrl else downloadUrl
                 val date = parseDateFromFileName(name) ?: LocalDate.MIN
-                list.add(Report(name, date, url))
+                list.add(Report(name, date, contentUrl))
             }
         }
         return list.sortedByDescending { it.date }
@@ -142,5 +178,10 @@ class ActionsFragment : Fragment() {
         DatePickerDialog(requireContext(), { _, year, month, day ->
             onDate(LocalDate.of(year, month + 1, day))
         }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)).show()
+    }
+
+    private fun showTokenWarning(message: String) {
+        tokenMessage.text = message
+        tokenWarning.visibility = View.VISIBLE
     }
 }

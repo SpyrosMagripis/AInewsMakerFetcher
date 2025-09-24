@@ -23,4 +23,7 @@
     <string name="stop">Stop</string>
     <string name="tab_reports">AI News</string>
     <string name="tab_actions">Actions for today</string>
+    <string name="token_missing_title">GitHub token missing</string>
+    <string name="token_missing_message">Private repository access requires a GitHub Personal Access Token with read contents scope. Add repoPat=YOUR_TOKEN to local.properties and rebuild.</string>
+    <string name="token_retry">Retry</string>
 </resources>

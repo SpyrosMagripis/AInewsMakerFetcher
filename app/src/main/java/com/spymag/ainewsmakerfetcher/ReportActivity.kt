@@ -109,13 +109,15 @@ class ReportActivity : AppCompatActivity() {
             thread {
                 try {
                     val connection = URL(url).openConnection() as HttpURLConnection
-                    
-                    // Add GitHub authentication if PAT is available
-                    val githubPat = BuildConfig.GITHUB_PAT
-                    if (githubPat.isNotEmpty()) {
-                        connection.setRequestProperty("Authorization", "Bearer $githubPat")
+                    connection.setRequestProperty("User-Agent", "AInewsMakerFetcher")
+
+                    val pat = resolvePat(url)
+                    if (pat.isNotEmpty()) {
+                        connection.setRequestProperty("Authorization", "Bearer $pat")
                     }
-                    
+                    if (url.contains("/contents/")) {
+                        connection.setRequestProperty("Accept", "application/vnd.github.v3.raw")
+                    }
                     connection.connect()
                     val content = connection.inputStream.bufferedReader().use { it.readText() }
                     
@@ -165,7 +167,15 @@ class ReportActivity : AppCompatActivity() {
             }
         }
     }
-    
+
+    private fun resolvePat(url: String): String {
+        return when {
+            url.contains("AInewsMaker", ignoreCase = true) -> BuildConfig.GITHUB_PAT_NEWS
+            url.contains("FilesServer", ignoreCase = true) || url.contains("ActionsForToday", ignoreCase = true) -> BuildConfig.GITHUB_PAT_ACTIONS
+            else -> ""
+        }
+    }
+
     private fun createStyledHtml(markdownHtml: String): String {
         return """
 <!DOCTYPE html>
